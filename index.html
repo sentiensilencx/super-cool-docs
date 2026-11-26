@@ -14,37 +14,72 @@
 <!-- ============ Home (start screen) ============ -->
 
 <div class="home" id="homeView">
-  <div class="home-inner">
-    <div class="home-head">
-      <div class="brand"><span class="brand-mark">T_T</span> super cool docs</div>
-      <button id="homeOpenBtn" class="ghost-btn">Open file…</button>
+  <header class="home-topbar">
+    <button id="hamburgerBtn" class="icon-btn" title="All documents">
+      <svg viewBox="0 0 16 16"><path d="M1.5 3.5h13M1.5 8h13M1.5 12.5h13" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+    </button>
+    <div class="home-brand">
+      <svg class="brand-doc" viewBox="0 0 20 20"><path d="M4 1.5h8L16.5 6v12.5h-13V1.5z" fill="#d97757"/><path d="M12 1.5 16.5 6H12V1.5z" fill="#f0a584"/></svg>
+      <span>super cool docs</span>
     </div>
-
-    <section class="home-section">
-      <h2 class="home-h2">Start a new document</h2>
-      <div class="size-cards">
-        <button class="size-card" data-size="a4">
-          <span class="size-sheet ratio-a4"></span>
-          <span class="size-name">Blank A4</span>
-          <span class="size-dim">210 × 297 mm</span>
-        </button>
-        <button class="size-card" data-size="letter">
-          <span class="size-sheet ratio-letter"></span>
-          <span class="size-name">Blank Letter</span>
-          <span class="size-dim">8.5 × 11 in</span>
-        </button>
-        <button class="size-card" data-size="legal">
-          <span class="size-sheet ratio-legal"></span>
-          <span class="size-name">Blank Legal</span>
-          <span class="size-dim">8.5 × 14 in</span>
-        </button>
+    <div class="home-search">
+      <svg viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m10 10 4 4" stroke="currentColor" stroke-width="1.8"/></svg>
+      <input type="text" id="homeSearch" placeholder="Search" autocomplete="off" />
+    </div>
+    <div class="menu-wrap profile-wrap">
+      <button id="profileBtn" class="avatar" title="Profile &amp; settings"></button>
+      <div class="menu profile-menu" id="profileMenu">
+        <div class="pm-title">Local profile</div>
+        <label class="pm-label">Default author
+          <input type="text" id="defaultAuthorInput" placeholder="anonymous" />
+        </label>
+        <div class="pm-storage" id="storageInfo"></div>
+        <button id="clearAllBtn" class="mbtn danger">Delete all documents</button>
       </div>
-    </section>
+    </div>
+  </header>
 
-    <section class="home-section">
-      <h2 class="home-h2">Recent documents</h2>
-      <div class="doc-grid" id="docGrid"></div>
-    </section>
+  <div class="home-body">
+    <aside class="home-drawer" id="homeDrawer">
+      <div class="tp-head">All documents</div>
+      <div id="drawerList"></div>
+    </aside>
+    <div class="home-backdrop" id="homeBackdrop"></div>
+
+    <div class="home-main">
+      <section class="home-section">
+        <h2 class="home-h2">Start a new document</h2>
+        <div class="template-row" id="templateRow"></div>
+      </section>
+
+      <section class="home-section">
+        <button id="galleryToggle" class="gallery-toggle">Template gallery <span class="chev">▾</span></button>
+        <div class="template-row gallery" id="galleryRow" hidden></div>
+      </section>
+
+      <section class="home-section">
+        <div class="recent-head">
+          <h2 class="home-h2">Recent documents</h2>
+          <div class="recent-tools">
+            <div class="menu-wrap">
+              <button id="sortBtn" class="tool-select">Last opened <span class="chev">▾</span></button>
+              <div class="menu sort-menu" id="sortMenu">
+                <button data-sort="opened">Last opened</button>
+                <button data-sort="title">Title A–Z</button>
+                <button data-sort="oldest">Oldest first</button>
+              </div>
+            </div>
+            <button id="viewGridBtn" class="icon-btn active" title="Grid view">
+              <svg viewBox="0 0 16 16"><path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z"/></svg>
+            </button>
+            <button id="viewListBtn" class="icon-btn" title="List view">
+              <svg viewBox="0 0 16 16"><path d="M1.5 3.5h13M1.5 8h13M1.5 12.5h13" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="doc-grid" id="docGrid"></div>
+      </section>
+    </div>
   </div>
 </div>
 
