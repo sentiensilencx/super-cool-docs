@@ -3,6 +3,35 @@
    ============================================================ */
 
 const STORAGE_KEY = "super-cool-docs.v2";
+const PROFILE_KEY = "super-cool-docs.profile.v1";
+const PREFS_KEY = "super-cool-docs.prefs.v1";
+
+function loadProfile() {
+  try {
+    return JSON.parse(localStorage.getItem(PROFILE_KEY)) || { author: "" };
+  } catch {
+    return { author: "" };
+  }
+}
+
+function loadPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY)) || { view: "grid", sort: "opened" };
+  } catch {
+    return { view: "grid", sort: "opened" };
+  }
+}
+
+const profile = loadProfile();
+const prefs = loadPrefs();
+
+function saveProfile() {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+}
+
+function savePrefs() {
+  localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
 
 const PAGE_DIMS = {
   a4: { w: 210, h: 297, atPage: "A4" },
@@ -54,15 +83,16 @@ function persist() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function makeDoc(pageSize) {
+function makeDoc(pageSize, html) {
   return {
     id: "d" + Date.now() + Math.random().toString(36).slice(2, 6),
     title: "",
-    author: "",
+    author: profile.author || "",
     pageSize: PAGE_DIMS[pageSize] ? pageSize : "a4",
     created: Date.now(),
     updated: Date.now(),
-    html: "",
+    openedAt: Date.now(),
+    html: html || "",
   };
 }
 
@@ -106,30 +136,167 @@ function docSnippet(doc) {
   return text || "Empty document";
 }
 
-function renderHome() {
+/* ---------- Templates ---------- */
+
+const RESUME_HTML = `<h1>Full Name</h1>
+<p><em>City, Country · you@example.com · +1 555 010 0000</em></p>
+<h2>Experience</h2>
+<p><strong>Job Title</strong> — Company Name, 2022–Present</p>
+<ul><li>Led a project that improved a key metric by a measurable amount</li><li>Shipped a feature used by many people</li><li>Mentored teammates and improved the team's process</li></ul>
+<h2>Education</h2>
+<p><strong>Degree Name</strong> — University Name, 2022</p>
+<h2>Skills</h2>
+<p>Skill One · Skill Two · Skill Three</p>`;
+
+const PROPOSAL_HTML = `<h1>Project Proposal</h1>
+<p><strong>Prepared by:</strong> anonymous · <strong>Date:</strong> —</p>
+<h2>Overview</h2>
+<p>Describe the problem, the proposed solution, and the expected outcome in two or three sentences.</p>
+<h2>Timeline</h2>
+<table><thead><tr><th>Phase</th><th>Dates</th><th>Deliverable</th></tr></thead><tbody><tr><td>Phase 1</td><td>Weeks 1–2</td><td>&nbsp;</td></tr><tr><td>Phase 2</td><td>Weeks 3–4</td><td>&nbsp;</td></tr><tr><td>Phase 3</td><td>Weeks 5–6</td><td>&nbsp;</td></tr></tbody></table>
+<h2>Budget</h2>
+<table><thead><tr><th>Item</th><th>Cost</th></tr></thead><tbody><tr><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></tbody></table>
+<h2>Approval</h2>
+<p>Signed: ____________________</p>`;
+
+const LETTER_HTML = `<p>October 14, 2026</p>
+<p>Recipient Name<br>Street Address<br>City, Country</p>
+<p>Dear Recipient,</p>
+<p>Open with the purpose of your letter in the first sentence, then give the details in one or two short paragraphs.</p>
+<p>Close with what you would like to happen next.</p>
+<p>Sincerely,</p>
+<p>&nbsp;</p>
+<p>Your Name</p>`;
+
+const REPORT_HTML = `<h1>Project Report</h1>
+<p><em>Prepared by anonymous · status: draft</em></p>
+<h2>Summary</h2>
+<p>One paragraph summarizing what happened, what was learned, and what is next.</p>
+<h2>What was done</h2>
+<ul><li>Milestone or task one</li><li>Milestone or task two</li><li>Milestone or task three</li></ul>
+<h2>Results</h2>
+<p>Describe outcomes, including numbers where possible.</p>
+<h2>Next steps</h2>
+<ol><li>First next step</li><li>Second next step</li></ol>`;
+
+const MEETING_HTML = `<h1>Meeting Notes</h1>
+<p><em>Date: — · Attendees: —</em></p>
+<h2>Agenda</h2>
+<ol><li>Topic one</li><li>Topic two</li></ol>
+<h2>Decisions</h2>
+<ul><li>Decision one — owner, deadline</li></ul>
+<h2>Action items</h2>
+<ul class="checklist"><li>Action item — owner</li><li class="done">Send these notes</li></ul>`;
+
+const TEMPLATES = [
+  { id: "blank-a4", name: "Blank document", sub: "A4", size: "a4", thumb: "blank", html: "" },
+  { id: "blank-letter", name: "Blank document", sub: "Letter", size: "letter", thumb: "blank", html: "" },
+  { id: "blank-legal", name: "Blank document", sub: "Legal", size: "legal", thumb: "blank", html: "" },
+  { id: "resume-serif", name: "Resume", sub: "Serif", size: "letter", thumb: "resume", html: RESUME_HTML },
+  { id: "resume-coral", name: "Resume", sub: "Coral", size: "letter", thumb: "resume-coral", html: RESUME_HTML },
+  { id: "proposal", name: "Project proposal", sub: "Tropic", size: "a4", thumb: "proposal", html: PROPOSAL_HTML },
+  { id: "letter", name: "Letter", sub: "Spearmint", size: "a4", thumb: "letter", html: LETTER_HTML },
+  { id: "report", name: "Report", sub: "Slate", size: "a4", thumb: "report", html: REPORT_HTML },
+  { id: "meeting", name: "Meeting notes", sub: "Geometric", size: "a4", thumb: "meeting", html: MEETING_HTML },
+];
+
+const MAIN_TEMPLATE_IDS = ["blank-a4", "blank-letter", "blank-legal", "resume-serif", "resume-coral", "proposal"];
+
+function thumbHtml(type) {
+  const L = (cls) => `<span class="thumb-line ${cls || ""}"></span>`;
+  switch (type) {
+    case "resume":
+    case "resume-coral":
+      return L("mid") + L("short") + L("wide") + L("wide") + L("mid") + L("wide") + L("short");
+    case "proposal":
+      return `<span class="thumb-band tropic"></span>` + L("wide") + L("mid") + `<span class="thumb-cols">${L()}${L()}${L()}</span><br>` + L("wide") + L("wide");
+    case "letter":
+      return L("short") + L("wide") + L("wide") + L("mid") + L("wide") + L("short");
+    case "report":
+      return `<span class="thumb-band slate"></span>` + L("wide") + L("wide") + L("mid") + `<span class="thumb-cols">${L()}${L()}</span><br>` + L("wide");
+    case "meeting":
+      return `<span class="thumb-band geometric"></span>` + L("mid") + L("wide") + L("wide") + L("short");
+    default:
+      return "";
+  }
+}
+
+function templateCard(t) {
+  const card = document.createElement("button");
+  card.className = "template-card";
+  const band =
+    t.thumb === "resume-coral" ? `<span class="thumb-band coral"></span>` :
+    t.thumb === "resume" ? `<span class="thumb-band slate"></span>` : "";
+  card.innerHTML = `
+    <span class="template-thumb">${band}${thumbHtml(t.thumb)}</span>
+    <span class="template-name"></span>
+    <span class="template-sub"></span>
+  `;
+  card.querySelector(".template-name").textContent = t.name;
+  card.querySelector(".template-sub").textContent = t.sub;
+  card.addEventListener("click", () => newDoc(t.size, t.html || ""));
+  return card;
+}
+
+function renderTemplates() {
+  const row = $("#templateRow");
+  row.innerHTML = "";
+  MAIN_TEMPLATE_IDS.forEach((id) => {
+    const t = TEMPLATES.find((x) => x.id === id);
+    row.appendChild(templateCard(t));
+  });
+  const gallery = $("#galleryRow");
+  gallery.innerHTML = "";
+  TEMPLATES.filter((t) => !MAIN_TEMPLATE_IDS.includes(t.id)).forEach((t) => {
+    gallery.appendChild(templateCard(t));
+  });
+}
+
+/* ---------- Recent documents ---------- */
+
+function renderRecent() {
   const grid = $("#docGrid");
   grid.innerHTML = "";
-  const docs = [...state.docs].sort((a, b) => b.updated - a.updated);
+  grid.classList.toggle("list-view", prefs.view === "list");
+  $("#viewGridBtn").classList.toggle("active", prefs.view === "grid");
+  $("#viewListBtn").classList.toggle("active", prefs.view === "list");
+
+  const q = ("#homeSearch") && $("#homeSearch").value.trim().toLowerCase();
+  let docs = [...state.docs].sort((a, b) => {
+    if (prefs.sort === "title") return (a.title || "Untitled").localeCompare(b.title || "Untitled");
+    if (prefs.sort === "oldest") return a.updated - b.updated;
+    return (b.openedAt || b.updated) - (a.openedAt || a.updated);
+  });
+  if (q) {
+    docs = docs.filter(
+      (d) => (d.title || "untitled").toLowerCase().includes(q) || docSnippet(d).toLowerCase().includes(q)
+    );
+  }
+
   if (!docs.length) {
-    grid.innerHTML = `<div class="home-empty">No documents yet — start one above.</div>`;
+    grid.innerHTML = `<div class="home-empty">${q ? `No documents match “${q}”` : "No documents yet — start one above."}</div>`;
     return;
   }
+
   docs.forEach((doc) => {
     const card = document.createElement("button");
     card.className = "doc-card";
-    const date = new Date(doc.updated).toLocaleDateString(undefined, {
-      year: "numeric", month: "short", day: "numeric",
+    const when = new Date(doc.openedAt || doc.updated).toLocaleDateString(undefined, {
+      month: "short", day: "numeric", year: "numeric",
     });
     card.innerHTML = `
-      <div class="dc-title"></div>
-      <div class="dc-snippet"></div>
-      <div class="dc-meta"><span class="dc-size"></span><span class="dc-date"></span></div>
+      <svg class="doc-icon" viewBox="0 0 20 20"><path d="M4 1.5h8L16.5 6v12.5h-13V1.5z" fill="#d97757"/></svg>
+      <div class="dc-body">
+        <div class="dc-title"></div>
+        <div class="dc-snippet"></div>
+        <div class="dc-meta"><span class="dc-size"></span><span class="dc-date"></span></div>
+      </div>
       <button class="dc-del" title="Delete">×</button>
     `;
-    card.querySelector(".dc-title").textContent = doc.title || "Untitled";
+    card.querySelector(".dc-title").textContent = doc.title || "Untitled document";
     card.querySelector(".dc-snippet").textContent = docSnippet(doc);
     card.querySelector(".dc-size").textContent = doc.pageSize || "a4";
-    card.querySelector(".dc-date").textContent = date;
+    card.querySelector(".dc-date").textContent = "Opened " + when;
     card.addEventListener("click", (e) => {
       if (e.target.classList.contains("dc-del")) return;
       openDocId(doc.id);
@@ -137,6 +304,55 @@ function renderHome() {
     card.querySelector(".dc-del").addEventListener("click", () => deleteDoc(doc.id));
     grid.appendChild(card);
   });
+}
+
+/* ---------- Home composition ---------- */
+
+function renderHome() {
+  renderTemplates();
+  renderRecent();
+  renderDrawer();
+  renderProfile();
+}
+
+/* ---------- Drawer & profile ---------- */
+
+function renderDrawer() {
+  const list = $("#drawerList");
+  list.innerHTML = "";
+  [...state.docs].sort((a, b) => (b.openedAt || b.updated) - (a.openedAt || a.updated)).forEach((doc) => {
+    const item = document.createElement("div");
+    item.className = "tp-item";
+    const date = new Date(doc.openedAt || doc.updated).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    item.innerHTML = `<span class="tp-title"></span><span class="tp-meta"></span><button class="tp-del" title="Delete">×</button>`;
+    item.querySelector(".tp-title").textContent = doc.title || "Untitled";
+    item.querySelector(".tp-meta").textContent = date;
+    item.addEventListener("click", (e) => {
+      if (e.target.classList.contains("tp-del")) return;
+      toggleDrawer(false);
+      openDocId(doc.id);
+    });
+    item.querySelector(".tp-del").addEventListener("click", () => deleteDoc(doc.id));
+    list.appendChild(item);
+  });
+}
+
+function toggleDrawer(open) {
+  const drawer = $("#homeDrawer");
+  const backdrop = $("#homeBackdrop");
+  const willOpen = open === undefined ? !drawer.classList.contains("open") : open;
+  drawer.classList.toggle("open", willOpen);
+  backdrop.classList.toggle("open", willOpen);
+  if (willOpen) renderDrawer();
+}
+
+function renderProfile(updateInput) {
+  const btn = $("#profileBtn");
+  const name = profile.author || "you";
+  btn.textContent = name.charAt(0).toUpperCase();
+  if (updateInput) $("#defaultAuthorInput").value = profile.author;
+  const bytes = new Blob([JSON.stringify(state)]).size;
+  $("#storageInfo").textContent = `${state.docs.length} document${state.docs.length === 1 ? "" : "s"} · ${(bytes / 1024).toFixed(1)} KB stored locally`;
 }
 
 /* ---------- Tabs ---------- */
@@ -199,6 +415,8 @@ function openDoc() {
 function openDocId(id) {
   saveActiveDoc();
   state.activeId = id;
+  const doc = activeDoc();
+  if (doc) doc.openedAt = Date.now();
   persist();
   openDoc();
   showEditor();
@@ -222,15 +440,15 @@ function saveActiveDoc() {
   doc.updated = Date.now();
 }
 
-function newDoc(pageSize) {
+function newDoc(pageSize, html) {
   saveActiveDoc();
-  const doc = makeDoc(pageSize || "a4");
+  const doc = makeDoc(pageSize || "a4", html);
   state.docs.push(doc);
   state.activeId = doc.id;
   persist();
   openDoc();
   showEditor();
-  docTitle.focus();
+  if (!html) docTitle.focus();
   showToast(`New ${PAGE_DIMS[doc.pageSize].atPage} document`);
 }
 
@@ -966,7 +1184,6 @@ document.addEventListener("selectionchange", () => {
 
 $("#homeBtn").addEventListener("click", showHome);
 $("#newTabBtn").addEventListener("click", () => newDoc("a4"));
-$("#homeOpenBtn").addEventListener("click", () => $("#fileInput").click());
 
 document.addEventListener("click", (e) => {
   if (
@@ -978,8 +1195,73 @@ document.addEventListener("click", (e) => {
   }
 });
 
-document.querySelectorAll(".size-card").forEach((card) => {
-  card.addEventListener("click", () => newDoc(card.dataset.size));
+/* ---------- Home wiring ---------- */
+
+$("#hamburgerBtn").addEventListener("click", () => toggleDrawer());
+$("#homeBackdrop").addEventListener("click", () => toggleDrawer(false));
+
+$("#galleryToggle").addEventListener("click", () => {
+  const row = $("#galleryRow");
+  const willOpen = row.hidden;
+  row.hidden = !willOpen;
+  $("#galleryToggle").classList.toggle("open", willOpen);
+});
+
+wireMenu("#sortBtn", "#sortMenu");
+
+function sortLabel() {
+  return { opened: "Last opened", title: "Title A–Z", oldest: "Oldest first" }[prefs.sort] || "Last opened";
+}
+
+function refreshSortLabel() {
+  const btn = $("#sortBtn");
+  btn.innerHTML = "";
+  btn.append(sortLabel(), " ");
+  const chev = document.createElement("span");
+  chev.className = "chev";
+  chev.textContent = "▾";
+  btn.appendChild(chev);
+}
+
+document.querySelectorAll(".sort-menu [data-sort]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    prefs.sort = btn.dataset.sort;
+    savePrefs();
+    closeMenus();
+    refreshSortLabel();
+    renderRecent();
+  });
+});
+
+$("#viewGridBtn").addEventListener("click", () => {
+  prefs.view = "grid";
+  savePrefs();
+  renderRecent();
+});
+$("#viewListBtn").addEventListener("click", () => {
+  prefs.view = "list";
+  savePrefs();
+  renderRecent();
+});
+
+$("#homeSearch").addEventListener("input", renderRecent);
+
+wireMenu("#profileBtn", "#profileMenu");
+
+$("#defaultAuthorInput").addEventListener("input", (e) => {
+  profile.author = e.target.value.trim();
+  saveProfile();
+  renderProfile(false);
+});
+
+$("#clearAllBtn").addEventListener("click", () => {
+  if (!confirm("Delete all documents? This cannot be undone.")) return;
+  const doc = makeDoc("a4");
+  state.docs = [doc];
+  state.activeId = doc.id;
+  persist();
+  renderHome();
+  showToast("All documents deleted");
 });
 
 /* ---------- Boot ---------- */
@@ -988,4 +1270,5 @@ wireMenu("#insertBtn", "#insertMenu");
 wireMenu("#alignBtn", "#alignMenu");
 wireMenu("#modeBtn", "#modeMenu");
 loadState();
+refreshSortLabel();
 renderHome();
