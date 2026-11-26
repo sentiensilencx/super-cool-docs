@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Collaboration — Papyra Docs</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body data-page="collaboration" data-section="Using Papyra">
+<div class="layout">
+  <main class="content">
+    <div class="content-inner">
+      <article>
+        <h1>Collaboration</h1>
+        <p class="page-subtitle">Real-time co-editing, comments, suggestions, and access control.</p>
+
+        <h2>Real-time co-editing</h2>
+        <p>Every collaborator's cursor is labeled with their name and color. Edits propagate in under 100&nbsp;ms, and a CRDT-based sync engine merges concurrent edits without locking the document — two people can type in the same paragraph at the same time.</p>
+
+        <h2>Sharing</h2>
+        <p>Click <strong>Share</strong> to manage access. You can invite by email or create a link with a fixed role:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Role</th><th>Capabilities</th></tr></thead>
+            <tbody>
+              <tr><td>Viewer</td><td>Read only; can download a copy</td></tr>
+              <tr><td>Commenter</td><td>Read + comment + suggest</td></tr>
+              <tr><td>Editor</td><td>Full editing; can share further if allowed</td></tr>
+              <tr><td>Owner</td><td>Editor + delete, transfer ownership, manage access</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Link sharing can be restricted to your workspace domain or turned off entirely. Expiring links (7/30/90 days) are available on self-hosted plans.</p>
+
+        <h2>Comments</h2>
+        <p>Select text and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> (or the comment icon) to anchor a comment. Threads support:</p>
+        <ul>
+          <li>@mentions — mentioned users get a notification</li>
+          <li>Reactions and emoji responses</li>
+          <li>Resolve/reopen, with a full resolved-comment archive</li>
+          <li>Assigning a thread to a person as a to-do</li>
+        </ul>
+
+        <h2>Suggesting mode</h2>
+        <p>Switch your role to <strong>Suggesting</strong> (top-right, next to your avatar). Edits become tracked suggestions the document owner can accept or reject individually, or all at once from the review sidebar.</p>
+
+        <h2>Version history</h2>
+        <p><strong>File → Version history</strong> shows every autosave plus named versions. You can:</p>
+        <ul>
+          <li>Preview any version with per-author color coding</li>
+          <li>Restore an old version (the current one is kept as a named version first)</li>
+          <li>Name milestones like “Draft for legal review”</li>
+        </ul>
+
+        <div class="callout warning">
+          <div class="callout-title">Restores are document-wide</div>
+          Restoring a version replaces the whole document for all collaborators. Communicate before rolling back a shared doc.
+        </div>
+      </article>
+    </div>
+  </main>
+</div>
+<script src="assets/js/search-data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

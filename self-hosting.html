@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Self-hosting — Papyra Docs</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body data-page="self-hosting" data-section="Developers">
+<div class="layout">
+  <main class="content">
+    <div class="content-inner">
+      <article>
+        <h1>Self-hosting</h1>
+        <p class="page-subtitle">Run the entire stack on your own hardware with one Docker command.</p>
+
+        <h2>Requirements</h2>
+        <ul>
+          <li>Docker Engine 24+ (or Podman 4+)</li>
+          <li>2 GB RAM and 1 vCPU minimum for small teams</li>
+          <li>A PostgreSQL 15+ database (bundled in the all-in-one image)</li>
+          <li>A domain with TLS for collaboration features</li>
+        </ul>
+
+        <h2>Quick install</h2>
+        <div class="codeblock"><pre data-label="bash">docker run -d \
+  --name papyra \
+  -p 8080:8080 \
+  -v papyra-data:/data \
+  -e PAPYRA_SECRET_KEY="generate-a-long-random-string" \
+  ghcr.io/papyra/papyra:latest</pre></div>
+        <p>Papyra is now listening on <code>http://localhost:8080</code>. The first account you create becomes the workspace admin.</p>
+
+        <div class="callout warning">
+          <div class="callout-title">Production setup</div>
+          For real deployments use Docker Compose with a managed Postgres, put TLS in front (Caddy/Nginx), and set <code>PAPYRA_PUBLIC_URL</code> to your HTTPS domain — the collaboration engine needs it to open WebSocket connections.
+        </div>
+
+        <h2>Docker Compose</h2>
+        <div class="codeblock"><pre data-label="docker-compose.yml">services:
+  papyra:
+    image: ghcr.io/papyra/papyra:latest
+    ports:
+      - "8080:8080"
+    environment:
+      PAPYRA_DATABASE_URL: postgres://papyra:pass@db:5432/papyra
+      PAPYRA_PUBLIC_URL: https://docs.example.com
+      PAPYRA_SECRET_KEY: ${PAPYRA_SECRET_KEY}
+    volumes:
+      - papyra-data:/data
+    depends_on:
+      - db
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: papyra
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: papyra
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+volumes:
+  papyra-data:
+  pg-data:</pre></div>
+
+        <h2>Upgrading</h2>
+        <p>Pull the new image and recreate the container. Migrations run automatically at startup and are backwards-compatible with one minor version.</p>
+        <div class="codeblock"><pre data-label="bash">docker compose pull
+docker compose up -d</pre></div>
+
+        <h2>Configuration reference</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>PAPYRA_PUBLIC_URL</code></td><td>—</td><td>Canonical HTTPS URL of the instance</td></tr>
+              <tr><td><code>PAPYRA_DATABASE_URL</code></td><td>embedded SQLite</td><td>Postgres connection string</td></tr>
+              <tr><td><code>PAPYRA_SECRET_KEY</code></td><td>—</td><td>Session signing key (required)</td></tr>
+              <tr><td><code>PAPYRA_STORAGE</code></td><td><code>local</code></td><td><code>local</code> or <code>s3</code></td></tr>
+              <tr><td><code>PAPYRA_SMTP_URL</code></td><td>—</td><td>SMTP for invites and notifications</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+  </main>
+</div>
+<script src="assets/js/search-data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Editor basics — Papyra Docs</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body data-page="editor-basics" data-section="Using Papyra">
+<div class="layout">
+  <main class="content">
+    <div class="content-inner">
+      <article>
+        <h1>Editor basics</h1>
+        <p class="page-subtitle">A tour of the canvas, toolbar, outline, and document settings.</p>
+
+        <h2>The canvas</h2>
+        <p>The canvas is a paginated surface: you see page boundaries, margins, and headers/footers exactly as they will print or export. A live word count, page count, and character count sit in the status bar at the bottom of the screen.</p>
+
+        <h2>The toolbar</h2>
+        <p>The toolbar groups common formatting actions. It is contextual — selecting an image shows image controls, selecting a table cell shows table controls.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Group</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td>Undo / history</td><td>Undo, redo, version history</td></tr>
+              <tr><td>Text</td><td>Font, size, bold, italic, underline, strikethrough, highlight, color</td></tr>
+              <tr><td>Paragraph</td><td>Heading levels, alignment, lists, indent, line spacing</td></tr>
+              <tr><td>Insert</td><td>Image, table, link, footnote, page break, table of contents, code block</td></tr>
+              <tr><td>Tools</td><td>Find &amp; replace, word count, spellcheck, voice typing</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Document outline</h2>
+        <p>Open the outline with <strong>View → Document outline</strong> (or the ☰ icon at the top-left of the canvas). It lists every heading in the document; click one to jump there, and drag headings to restructure entire sections.</p>
+
+        <h2>Find and replace</h2>
+        <p>Press <kbd>Ctrl</kbd>+<kbd>F</kbd> for find and <kbd>Ctrl</kbd>+<kbd>H</kbd> for find &amp; replace. Options include match case, whole words, and regular expressions.</p>
+
+        <h2>Autosave and versions</h2>
+        <p>Every keystroke is saved locally and synced to the server within seconds. Named versions can be created from <strong>File → Version history</strong>, where you can preview and restore any earlier snapshot. See <a href="collaboration.html">Collaboration</a> for how versions interact with co-editing.</p>
+
+        <div class="callout warning">
+          <div class="callout-title">Offline mode</div>
+          Without a connection, edits queue in local storage and sync automatically on reconnect. If you close the tab while offline, Papyra keeps an offline copy — reopen the document from the dashboard to recover it.
+        </div>
+
+        <h2>Page setup</h2>
+        <p><strong>File → Page setup</strong> controls page size, orientation, margins, and default fonts for the document. Changes apply to the whole document unless a section break divides it.</p>
+      </article>
+    </div>
+  </main>
+</div>
+<script src="assets/js/search-data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

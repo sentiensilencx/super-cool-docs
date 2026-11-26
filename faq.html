@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FAQ — Papyra Docs</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body data-page="faq" data-section="Resources">
+<div class="layout">
+  <main class="content">
+    <div class="content-inner">
+      <article>
+        <h1>FAQ</h1>
+        <p class="page-subtitle">Frequently asked questions about Papyra.</p>
+
+        <h2>Is Papyra really free?</h2>
+        <p>Yes. Papyra is open source under AGPL-3.0. The hosted service at <code>app.papyra.dev</code> has a free tier, and the software itself costs nothing to self-host forever.</p>
+
+        <h2>Does it work offline?</h2>
+        <p>Yes. The editor is an offline-first app. Edits are stored locally and synced when you reconnect. Only real-time collaboration requires a connection.</p>
+
+        <h2>Can I open my existing Word documents?</h2>
+        <p>Yes. Papyra imports <code>.docx</code> (and <code>.odt</code>, <code>.rtf</code>, <code>.html</code>, <code>.md</code>) with high fidelity, including styles, tables, images, headers/footers, comments, and tracked changes.</p>
+
+        <h2>Where are my documents stored?</h2>
+        <p>On the hosted service, in an encrypted Postgres database in your chosen region. Self-hosted, in your own database and object storage. Anonymous local documents live only in your browser until you sign in or share.</p>
+
+        <h2>How does this compare to Microsoft Word or Google Docs?</h2>
+        <ul>
+          <li><strong>vs. Word</strong> — no install, real-time collaboration by default, open formats, but Word still wins on macro support and exotic layout features.</li>
+          <li><strong>vs. Google Docs</strong> — comparable collaboration, but Papyra is self-hostable and your data never has to leave your infrastructure.</li>
+        </ul>
+
+        <h2>Does it support my language?</h2>
+        <p>The interface ships in 20+ community-translated languages, with full right-to-left support and 80+ spellcheck dictionaries.</p>
+
+        <h2>How do I report a bug or request a feature?</h2>
+        <p>Open an issue on the <a href="https://github.com/papyra/papyra/issues" target="_blank" rel="noopener">GitHub repository</a>. Security issues should go to <code>security@papyra.dev</code> rather than a public issue.</p>
+
+        <h2>Can I migrate away later?</h2>
+        <p>Always. Every document exports to <code>.docx</code>/<code>.odt</code>, and self-hosted instances can export the full workspace (documents, comments, users) as a single archive from the admin panel.</p>
+      </article>
+    </div>
+  </main>
+</div>
+<script src="assets/js/search-data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
