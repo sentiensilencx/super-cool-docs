@@ -1,10 +1,20 @@
 /* ============================================================
-   super cool docs — dark, warm, Word-replacement editor
+   super cool docs — Google Docs structure, dark warm theme
    ============================================================ */
 
 const STORAGE_KEY = "super-cool-docs.v2";
 const PROFILE_KEY = "super-cool-docs.profile.v1";
 const PREFS_KEY = "super-cool-docs.prefs.v1";
+
+const PAGE_DIMS = {
+  a4: { w: 210, h: 297, atPage: "A4" },
+  letter: { w: 215.9, h: 279.4, atPage: "letter" },
+  legal: { w: 215.9, h: 355.6, atPage: "legal" },
+};
+
+const HIGHLIGHT_RGB = "rgb(230, 195, 92)";
+const HIGHLIGHT_HEX = "#e6c35c";
+const BODY_TEXT_HEX = "#ece7db";
 
 function loadProfile() {
   try {
@@ -33,28 +43,14 @@ function savePrefs() {
   localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
 }
 
-const PAGE_DIMS = {
-  a4: { w: 210, h: 297, atPage: "A4" },
-  letter: { w: 215.9, h: 279.4, atPage: "letter" },
-  legal: { w: 215.9, h: 355.6, atPage: "legal" },
-};
-
-const HIGHLIGHT_RGB = "rgb(230, 195, 92)";
-const HIGHLIGHT_HEX = "#e6c35c";
-const BODY_TEXT_HEX = "#ece7db";
-
 const state = { docs: [], activeId: null };
 
 const $ = (sel) => document.querySelector(sel);
 const editor = $("#editor");
-
 const docTitle = $("#docTitle");
-const docDate = $("#docDate");
-const docAuthor = $("#docAuthor");
-const tabbar = $("#tabbar");
-const tabpanel = $("#tabpanel");
 const sheet = $("#sheet");
 const toast = $("#toast");
+const editorShell = $(".editor-shell");
 
 /* ---------- Persistence ---------- */
 
@@ -88,6 +84,7 @@ function makeDoc(pageSize, html) {
     id: "d" + Date.now() + Math.random().toString(36).slice(2, 6),
     title: "",
     author: profile.author || "",
+    starred: false,
     pageSize: PAGE_DIMS[pageSize] ? pageSize : "a4",
     created: Date.now(),
     updated: Date.now(),
@@ -110,6 +107,19 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
 }
 
+/* ---------- Info modal ---------- */
+
+function showInfo(title, html) {
+  $("#infoTitle").textContent = title;
+  $("#infoBody").innerHTML = html;
+  $("#infoModal").classList.add("open");
+}
+
+$("#infoCloseBtn").addEventListener("click", () => $("#infoModal").classList.remove("open"));
+$("#infoModal").addEventListener("click", (e) => {
+  if (e.target === $("#infoModal")) $("#infoModal").classList.remove("open");
+});
+
 /* ---------- View switching ---------- */
 
 function showHome() {
@@ -125,6 +135,8 @@ function showEditor() {
   document.body.classList.remove("view-home");
   document.body.classList.add("view-editor");
   $("#editorView").hidden = false;
+  if (window.innerWidth < 1100) editorShell.classList.add("side-collapsed");
+  requestAnimationFrame(updatePageBreaks);
 }
 
 /* ---------- Home rendering ---------- */
@@ -134,6 +146,13 @@ function docSnippet(doc) {
   tmp.innerHTML = doc.html || "";
   const text = (tmp.textContent || "").replace(/\s+/g, " ").trim();
   return text || "Empty document";
+}
+
+function renderHome() {
+  renderTemplates();
+  renderRecent();
+  renderDrawer();
+  renderProfile();
 }
 
 /* ---------- Templates ---------- */
@@ -261,10 +280,11 @@ function renderRecent() {
   $("#viewGridBtn").classList.toggle("active", prefs.view === "grid");
   $("#viewListBtn").classList.toggle("active", prefs.view === "list");
 
-  const q = ("#homeSearch") && $("#homeSearch").value.trim().toLowerCase();
+  const q = $("#homeSearch").value.trim().toLowerCase();
   let docs = [...state.docs].sort((a, b) => {
     if (prefs.sort === "title") return (a.title || "Untitled").localeCompare(b.title || "Untitled");
     if (prefs.sort === "oldest") return a.updated - b.updated;
+    if (prefs.sort === "starred") return (b.starred - a.starred) || ((b.openedAt || b.updated) - (a.openedAt || a.updated));
     return (b.openedAt || b.updated) - (a.openedAt || a.updated);
   });
   if (q) {
@@ -304,15 +324,6 @@ function renderRecent() {
     card.querySelector(".dc-del").addEventListener("click", () => deleteDoc(doc.id));
     grid.appendChild(card);
   });
-}
-
-/* ---------- Home composition ---------- */
-
-function renderHome() {
-  renderTemplates();
-  renderRecent();
-  renderDrawer();
-  renderProfile();
 }
 
 /* ---------- Drawer & profile ---------- */
@@ -355,41 +366,42 @@ function renderProfile(updateInput) {
   $("#storageInfo").textContent = `${state.docs.length} document${state.docs.length === 1 ? "" : "s"} · ${(bytes / 1024).toFixed(1)} KB stored locally`;
 }
 
-/* ---------- Tabs ---------- */
+/* ---------- Sidebar tabs & outline ---------- */
 
 function renderTabs() {
-  tabbar.innerHTML = "";
+  const wrap = $("#sideTabs");
+  wrap.innerHTML = "";
   state.docs.forEach((doc) => {
     const tab = document.createElement("div");
-    tab.className = "tab" + (doc.id === state.activeId ? " active" : "");
-    tab.innerHTML = `<span></span><button class="tab-close" title="Close">×</button>`;
+    tab.className = "side-tab" + (doc.id === state.activeId ? " active" : "");
+    tab.innerHTML = `<span></span><button class="tab-close" title="Close document">×</button>`;
     tab.querySelector("span").textContent = doc.title || "Untitled";
     tab.addEventListener("click", (e) => {
       if (e.target.classList.contains("tab-close")) return;
       switchDoc(doc.id);
     });
     tab.querySelector(".tab-close").addEventListener("click", () => deleteDoc(doc.id));
-    tabbar.appendChild(tab);
+    wrap.appendChild(tab);
   });
 }
 
-function renderTabPanel() {
-  tabpanel.innerHTML = `<div class="tp-head">All documents · ${state.docs.length}</div>`;
-  const sorted = [...state.docs].sort((a, b) => b.updated - a.updated);
-  sorted.forEach((doc) => {
-    const item = document.createElement("div");
-    item.className = "tp-item" + (doc.id === state.activeId ? " active" : "");
-    const date = new Date(doc.updated).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    item.innerHTML = `<span class="tp-title"></span><span class="tp-meta"></span><button class="tp-del" title="Delete">×</button>`;
-    item.querySelector(".tp-title").textContent = doc.title || "Untitled";
-    item.querySelector(".tp-meta").textContent = date;
-    item.addEventListener("click", (e) => {
-      if (e.target.classList.contains("tp-del")) return;
-      switchDoc(doc.id);
-      tabpanel.classList.remove("open");
+function renderOutline() {
+  const box = $("#outline");
+  const headings = [...editor.querySelectorAll("h1, h2, h3")];
+  if (!headings.length) {
+    box.innerHTML = `<div class="outline-empty">Headings you add to the document will appear here.</div>`;
+    return;
+  }
+  box.innerHTML = "";
+  headings.forEach((h) => {
+    const item = document.createElement("button");
+    item.className = "outline-item";
+    item.dataset.level = h.tagName[1];
+    item.textContent = h.textContent || "—";
+    item.addEventListener("click", () => {
+      h.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-    item.querySelector(".tp-del").addEventListener("click", () => deleteDoc(doc.id));
-    tabpanel.appendChild(item);
+    box.appendChild(item);
   });
 }
 
@@ -399,15 +411,12 @@ function openDoc() {
   const doc = activeDoc();
   if (!doc) return;
   docTitle.textContent = doc.title;
-  docAuthor.textContent = doc.author;
-  docDate.textContent = new Date(doc.created).toLocaleDateString(undefined, {
-    year: "numeric", month: "short", day: "numeric",
-  });
+  $("#starBtn").classList.toggle("starred", !!doc.starred);
   editor.innerHTML = doc.html || "<p><br></p>";
   sheet.dataset.size = doc.pageSize || "a4";
   applyAtPage();
   renderTabs();
-  renderTabPanel();
+  renderOutline();
   updateCounts();
   requestAnimationFrame(updatePageBreaks);
 }
@@ -426,6 +435,8 @@ function switchDoc(id) {
   if (id === state.activeId) return;
   saveActiveDoc();
   state.activeId = id;
+  const doc = activeDoc();
+  if (doc) doc.openedAt = Date.now();
   persist();
   openDoc();
 }
@@ -434,7 +445,6 @@ function saveActiveDoc() {
   const doc = activeDoc();
   if (!doc) return;
   doc.title = docTitle.textContent.trim();
-  doc.author = docAuthor.textContent.trim();
   doc.pageSize = sheet.dataset.size;
   doc.html = editor.innerHTML;
   doc.updated = Date.now();
@@ -474,7 +484,7 @@ function scheduleSave() {
   saveTimer = setTimeout(() => {
     saveActiveDoc();
     persist();
-    renderTabPanel();
+    renderTabs();
     $("#savedAt").textContent =
       "Saved " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }, 600);
@@ -547,6 +557,7 @@ function insertBlock(html) {
   scheduleSave();
   updateCounts();
   updatePageBreaks();
+  renderOutline();
 }
 
 function insertLink() {
@@ -585,6 +596,54 @@ function escapeAttr(s) {
   return escapeHtml(s).replace(/'/g, "&#39;");
 }
 
+function toggleHighlight() {
+  let color;
+  try {
+    color = document.queryCommandValue("backColor");
+  } catch {
+    color = "";
+  }
+  editor.focus();
+  document.execCommand("styleWithCSS", false, true);
+  if (color === HIGHLIGHT_RGB) {
+    document.execCommand("backColor", false, "transparent");
+    document.execCommand("foreColor", false, BODY_TEXT_HEX);
+  } else {
+    document.execCommand("backColor", false, HIGHLIGHT_HEX);
+    document.execCommand("foreColor", false, "#221c10");
+  }
+  document.execCommand("styleWithCSS", false, false);
+  scheduleSave();
+}
+
+function showWordCount() {
+  updateCounts();
+  showInfo(
+    "Document statistics",
+    `<table>
+      <tr><td>Pages</td><td>${$("#pageCount").textContent.replace("Page ", "").split(" of ")[1] || 1}</td></tr>
+      <tr><td>Words</td><td>${$("#wordCount").textContent}</td></tr>
+      <tr><td>Characters</td><td>${$("#charCount").textContent}</td></tr>
+    </table>`
+  );
+}
+
+function showShortcuts() {
+  const row = (keys, label) => `<tr><td><kbd>${keys}</kbd></td><td>${label}</td></tr>`;
+  showInfo(
+    "Keyboard shortcuts",
+    `<table>
+      ${row("Ctrl+B", "Bold")}${row("Ctrl+I", "Italic")}${row("Ctrl+U", "Underline")}
+      ${row("Ctrl+Z / Ctrl+Y", "Undo / Redo")}
+      ${row("Ctrl+F", "Find & replace")}
+      ${row("Ctrl+S", "Download as .html")}
+      ${row("Ctrl+O", "Open file")}
+      ${row("Ctrl+P", "Print")}
+      ${row("Ctrl+Alt+N", "New document")}
+    </table>`
+  );
+}
+
 function runCommand(cmd) {
   switch (cmd) {
     case "openDoc": return $("#fileInput").click();
@@ -598,31 +657,29 @@ function runCommand(cmd) {
     case "highlight": return toggleHighlight();
     case "insertUnorderedList": return exec("insertUnorderedList");
     case "insertOrderedList": return exec("insertOrderedList");
+    case "indent": return exec("indent");
+    case "outdent": return exec("outdent");
+    case "undo": return exec("undo");
+    case "redo": return exec("redo");
+    case "selectAll":
+      editor.focus();
+      document.execCommand("selectAll");
+      return;
     case "find": return openFind();
+    case "home": return showHome();
+    case "toggleSide": return editorShell.classList.toggle("side-collapsed");
+    case "wordCount": return showWordCount();
+    case "shortcuts": return showShortcuts();
+    case "about":
+      return showInfo("About", `<strong>super cool docs</strong><br>A dark, distraction-free document editor. Plain HTML, CSS, and JavaScript — no dependencies. Documents are stored locally in your browser.`);
+    case "deleteDoc": {
+      const doc = activeDoc();
+      if (doc && confirm(`Delete “${doc.title || "Untitled"}”? This cannot be undone.`)) {
+        deleteDoc(doc.id);
+      }
+      return;
+    }
   }
-}
-
-function toggleHighlight() {
-  let color;
-  try {
-    color = document.queryCommandValue("backColor");
-  } catch {
-    color = "";
-  }
-  if (color === HIGHLIGHT_RGB) {
-    editor.focus();
-    document.execCommand("styleWithCSS", false, true);
-    document.execCommand("backColor", false, "transparent");
-    document.execCommand("foreColor", false, BODY_TEXT_HEX);
-    document.execCommand("styleWithCSS", false, false);
-  } else {
-    editor.focus();
-    document.execCommand("styleWithCSS", false, true);
-    document.execCommand("backColor", false, HIGHLIGHT_HEX);
-    document.execCommand("foreColor", false, "#221c10");
-    document.execCommand("styleWithCSS", false, false);
-  }
-  scheduleSave();
 }
 
 function runInsert(kind) {
@@ -759,11 +816,15 @@ function setMode(mode) {
   modeBtn.textContent = mode === "preview" ? "Preview ▾" : "Editing ▾";
   editor.contentEditable = mode === "preview" ? "false" : "true";
   docTitle.contentEditable = mode === "preview" ? "false" : "true";
-  docAuthor.contentEditable = mode === "preview" ? "false" : "true";
   requestAnimationFrame(updatePageBreaks);
 }
 
-/* ---------- Dropdown menus ---------- */
+/* ---------- Menus ---------- */
+
+function closeMenus() {
+  document.querySelectorAll(".menu").forEach((m) => m.classList.remove("open"));
+  document.querySelectorAll(".menu-wrap").forEach((w) => w.classList.remove("open"));
+}
 
 function wireMenu(btnSel, menuSel) {
   const btn = $(btnSel);
@@ -772,15 +833,85 @@ function wireMenu(btnSel, menuSel) {
     e.stopPropagation();
     const isOpen = menu.classList.contains("open");
     closeMenus();
-    if (!isOpen) menu.classList.add("open");
+    if (!isOpen) {
+      menu.classList.add("open");
+      btn.closest(".menu-wrap").classList.add("open");
+    }
   });
   document.addEventListener("click", (e) => {
-    if (!menu.contains(e.target)) menu.classList.remove("open");
+    if (!menu.contains(e.target)) {
+      menu.classList.remove("open");
+      btn.closest(".menu-wrap").classList.remove("open");
+    }
   });
 }
-function closeMenus() {
-  document.querySelectorAll(".menu").forEach((m) => m.classList.remove("open"));
-}
+
+document.querySelectorAll(".menubar .menu-wrap").forEach((wrap) => {
+  const label = wrap.querySelector(".menu-label");
+  const menu = wrap.querySelector(".menu");
+  if (!label || !menu) return;
+  label.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = menu.classList.contains("open");
+    closeMenus();
+    if (!isOpen) {
+      menu.classList.add("open");
+      wrap.classList.add("open");
+    }
+  });
+  document.addEventListener("click", (e) => {
+    if (!wrap.contains(e.target)) {
+      menu.classList.remove("open");
+      wrap.classList.remove("open");
+    }
+  });
+});
+
+/* ---------- Delegated action dispatch ---------- */
+
+document.addEventListener("click", (e) => {
+  const cmdEl = e.target.closest("[data-cmd]");
+  if (cmdEl) {
+    closeMenus();
+    runCommand(cmdEl.dataset.cmd);
+    return;
+  }
+  const insertEl = e.target.closest("[data-insert]");
+  if (insertEl) {
+    closeMenus();
+    runInsert(insertEl.dataset.insert);
+    return;
+  }
+  const alignEl = e.target.closest("[data-align]");
+  if (alignEl) {
+    closeMenus();
+    exec(alignEl.dataset.align);
+    return;
+  }
+  const newSizeEl = e.target.closest("[data-new-size]");
+  if (newSizeEl) {
+    closeMenus();
+    newDoc(newSizeEl.dataset.newSize);
+    return;
+  }
+  const pageSizeEl = e.target.closest("[data-page-size]");
+  if (pageSizeEl) {
+    closeMenus();
+    sheet.dataset.size = pageSizeEl.dataset.pageSize;
+    saveActiveDoc();
+    persist();
+    applyAtPage();
+    updatePageBreaks();
+    showToast(`Page size: ${PAGE_DIMS[sheet.dataset.size].atPage}`);
+    return;
+  }
+  const modeEl = e.target.closest("[data-mode]");
+  if (modeEl) {
+    closeMenus();
+    setMode(modeEl.dataset.mode);
+    return;
+  }
+});
 
 /* ---------- Find & replace ---------- */
 
@@ -894,6 +1025,7 @@ $("#replaceAllBtn").addEventListener("click", replaceAll);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (findModal.classList.contains("open")) closeFind();
+    if ($("#infoModal").classList.contains("open")) $("#infoModal").classList.remove("open");
     closeMenus();
   }
 });
@@ -922,8 +1054,6 @@ ul.checklist{list-style:none;padding-left:4px}ul.checklist li.done{color:#999;te
 </head>
 <body>
 <h1>${escapeHtml(doc.title || "Untitled")}</h1>
-<p><em>${escapeHtml(doc.author || "anonymous")} · ${new Date(doc.created).toLocaleDateString()}</em></p>
-<hr>
 ${doc.html}
 </body>
 </html>`;
@@ -1052,9 +1182,8 @@ $("#fileInput").addEventListener("change", (e) => {
     }
 
     saveActiveDoc();
-    const doc = makeDoc("a4");
+    const doc = makeDoc("a4", html);
     doc.title = title;
-    doc.html = html;
     state.docs.push(doc);
     state.activeId = doc.id;
     persist();
@@ -1097,6 +1226,7 @@ editor.addEventListener("input", (e) => {
   scheduleSave();
   updateCounts();
   updatePageBreaks();
+  renderOutline();
   if (e.inputType === "insertText" && (e.data === "*" || e.data === "`")) {
     if (tryInlineFormat(e.data)) {
       scheduleSave();
@@ -1120,17 +1250,23 @@ docTitle.addEventListener("keydown", (e) => {
   }
 });
 
-docAuthor.addEventListener("input", scheduleSave);
-
 window.addEventListener("resize", () => {
   requestAnimationFrame(updatePageBreaks);
 });
 
-/* ---------- Toolbar wiring ---------- */
+/* ---------- Chrome wiring ---------- */
 
-document.querySelectorAll(".tbtn[data-cmd]").forEach((btn) => {
-  btn.addEventListener("mousedown", (e) => e.preventDefault());
-  btn.addEventListener("click", () => runCommand(btn.dataset.cmd));
+$("#sideToggle").addEventListener("click", () => editorShell.classList.toggle("side-collapsed"));
+$("#homeBtn").addEventListener("click", showHome);
+$("#newTabBtn").addEventListener("click", () => newDoc("a4"));
+
+$("#starBtn").addEventListener("click", () => {
+  const doc = activeDoc();
+  if (!doc) return;
+  doc.starred = !doc.starred;
+  $("#starBtn").classList.toggle("starred", doc.starred);
+  persist();
+  showToast(doc.starred ? "Starred" : "Star removed");
 });
 
 $("#fontSizeSel").addEventListener("mousedown", () => editor.focus());
@@ -1140,59 +1276,15 @@ $("#fontSizeSel").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
-document.querySelectorAll(".align-menu [data-align]").forEach((btn) => {
-  btn.addEventListener("mousedown", (e) => e.preventDefault());
-  btn.addEventListener("click", () => {
-    closeMenus();
-    exec(btn.dataset.align);
-  });
+$("#fontFamilySel").addEventListener("mousedown", () => editor.focus());
+$("#fontFamilySel").addEventListener("change", (e) => {
+  if (!e.target.value) return;
+  exec("fontName", e.target.value);
+  e.target.value = "";
 });
 
-$("#insertBtn").addEventListener("mousedown", (e) => e.preventDefault());
-document.querySelectorAll(".insert-menu [data-insert]").forEach((btn) => {
-  btn.addEventListener("mousedown", (e) => e.preventDefault());
-  btn.addEventListener("click", () => {
-    closeMenus();
-    runInsert(btn.dataset.insert);
-  });
-});
-
-document.querySelectorAll(".mode-menu [data-mode]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    closeMenus();
-    setMode(btn.dataset.mode);
-  });
-});
-
-document.addEventListener("selectionchange", () => {
-  if (document.body.classList.contains("mode-preview")) return;
-  ["bold", "italic", "underline", "insertUnorderedList", "insertOrderedList"].forEach((cmd) => {
-    const btn = document.querySelector(`.tbtn[data-cmd="${cmd}"]`);
-    if (btn) {
-      let on = false;
-      try {
-        on = document.queryCommandState(cmd);
-      } catch {
-        on = false;
-      }
-      btn.classList.toggle("active", on);
-    }
-  });
-});
-
-/* ---------- Chrome buttons ---------- */
-
-$("#homeBtn").addEventListener("click", showHome);
-$("#newTabBtn").addEventListener("click", () => newDoc("a4"));
-
-document.addEventListener("click", (e) => {
-  if (
-    tabpanel.classList.contains("open") &&
-    !tabpanel.contains(e.target) &&
-    !$("#newTabBtn").contains(e.target)
-  ) {
-    tabpanel.classList.remove("open");
-  }
+$("#textColor").addEventListener("input", (e) => {
+  exec("foreColor", e.target.value);
 });
 
 /* ---------- Home wiring ---------- */
@@ -1210,7 +1302,7 @@ $("#galleryToggle").addEventListener("click", () => {
 wireMenu("#sortBtn", "#sortMenu");
 
 function sortLabel() {
-  return { opened: "Last opened", title: "Title A–Z", oldest: "Oldest first" }[prefs.sort] || "Last opened";
+  return { opened: "Last opened", starred: "Starred first", title: "Title A–Z", oldest: "Oldest first" }[prefs.sort] || "Last opened";
 }
 
 function refreshSortLabel() {
@@ -1267,7 +1359,6 @@ $("#clearAllBtn").addEventListener("click", () => {
 /* ---------- Boot ---------- */
 
 wireMenu("#insertBtn", "#insertMenu");
-wireMenu("#alignBtn", "#alignMenu");
 wireMenu("#modeBtn", "#modeMenu");
 loadState();
 refreshSortLabel();
