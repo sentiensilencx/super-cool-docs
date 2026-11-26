@@ -1358,7 +1358,6 @@ $("#clearAllBtn").addEventListener("click", () => {
 
 /* ---------- Boot ---------- */
 
-wireMenu("#insertBtn", "#insertMenu");
 wireMenu("#modeBtn", "#modeMenu");
 loadState();
 refreshSortLabel();
